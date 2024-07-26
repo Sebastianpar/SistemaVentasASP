@@ -331,6 +331,17 @@ __pycache__/
 # tools/**
 # !tools/packages.config
 
+# Compiled DLLs
+*.dll
+*.exe
+*.pdb
+*.cache
+*.msbuildeditorconfig
+*.dtbcache.v2
+*.vsidx
+*.bin
+*.json
+
 # Tabs Studio
 *.tss
 
