@@ -8,7 +8,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SistemaVenta.DAL.DBContext;
 using Microsoft.EntityFrameworkCore;
-//using SistemaVenta.DAL;
+using SistemaVenta.DAL.Interface;
+using SistemaVenta.DAL.Implementation;
+using SistemaVenta.BLL.Implementation;
+using SistemaVenta.BLL.Interface;
+
 
 namespace SistemaVenta.IOC
 {
@@ -20,6 +24,12 @@ namespace SistemaVenta.IOC
             {
                 options.UseSqlServer(Configuration.GetConnectionString("CadenaSQL"));
             });
+            //se usa AddTransient porque es una clase generica y asi no tengo que especificar la entidad
+            services.AddTransient(typeof(IGenericRepository<>),typeof(GenericRepository<>));
+            services.AddScoped<IVentaRespository, VentaRepository>();
+
+            services.AddScoped<ICorreoService, CorreoService>();
+            services.AddScoped<IFireBaseService, FireBaseService>();
         }
     }
 }
