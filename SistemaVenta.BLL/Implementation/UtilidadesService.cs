@@ -14,12 +14,7 @@ namespace SistemaVenta.BLL.Implementation
     {
         public string ConvertirSha256(string texto)
         {
-            string clave = Guid.NewGuid().ToString("N").Substring(0,6);
-            return clave;
-        }
-
-        public string GenerarClave(string texto)
-        {
+            
             StringBuilder sb = new StringBuilder();
             using (SHA256 hash = SHA256Managed.Create())
             {
@@ -33,6 +28,12 @@ namespace SistemaVenta.BLL.Implementation
                 }
             }
             return sb.ToString();
+        }
+
+        public string GenerarClave()
+        {
+            string clave = Guid.NewGuid().ToString("N").Substring(0,6);
+            return clave;
         }
     }
 }

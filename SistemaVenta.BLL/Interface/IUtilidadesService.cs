@@ -9,7 +9,7 @@ namespace SistemaVenta.BLL.Interface
 {
     public interface IUtilidadesService
     {
-        string GenerarClave(string texto);
+        string GenerarClave();
         string ConvertirSha256(string texto);
     }
 }
