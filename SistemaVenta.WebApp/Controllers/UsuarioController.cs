@@ -79,5 +79,57 @@ namespace SistemaVenta.WebApp.Controllers
             }
             return StatusCode(StatusCodes.Status200OK, genericResponse);
         }
+        [HttpPut]
+
+        public async Task<IActionResult> Editar([FromForm] IFormFile foto, [FromForm] string modelo)
+        {
+            GenericResponse<VMUsuario> genericResponse = new GenericResponse<VMUsuario>();
+
+            try
+            {
+                VMUsuario vmUsuario = JsonConvert.DeserializeObject<VMUsuario>(modelo);
+
+                string nombreFoto = "";
+                Stream fotoStream = null;
+
+                if (foto != null)
+                {
+                    string nombre_en_codigo = Guid.NewGuid().ToString("N");
+                    string extension = Path.GetExtension(foto.FileName);
+                    nombreFoto = string.Concat(nombre_en_codigo, extension);
+                    fotoStream = foto.OpenReadStream();
+                }              
+
+                Usuario usuario_editado = await _usuarioService.Edit(_mapper.Map<Usuario>(vmUsuario), fotoStream, nombreFoto);
+
+                vmUsuario = _mapper.Map<VMUsuario>(usuario_editado);
+
+                genericResponse.Estado = true;
+                genericResponse.Objeto = vmUsuario;
+            }
+            catch (Exception ex)
+            {
+                genericResponse.Estado = false;
+                genericResponse.Mensaje = ex.Message;
+            }
+            return StatusCode(StatusCodes.Status200OK, genericResponse);
+        }
+
+        [HttpDelete]
+
+        public async Task<IActionResult> ELiminar(int IdUsuario)
+        {
+            GenericResponse<string> genericResponse = new GenericResponse<string>();
+            try
+            {
+                genericResponse.Estado = await _usuarioService.Delete(IdUsuario);
+            }
+            catch (Exception ex)
+            {
+                genericResponse.Estado = false;
+                genericResponse.Mensaje = ex.Message;
+            }
+            return StatusCode(StatusCodes.Status200OK, genericResponse);
+        }
     }
 }
