@@ -11,7 +11,7 @@ using SistemaVenta.Entity;
 
 namespace SistemaVenta.BLL.Implementation
 {
-    public class UsuarioService : IUsauarioService
+    public class UsuarioService : IUsuarioService
     {
         private readonly IGenericRepository<Usuario> _repository;
         private readonly IFireBaseService _fireBaseService;
@@ -70,7 +70,7 @@ namespace SistemaVenta.BLL.Implementation
                             if (response.CharacterSet == null)
                                 readerStream = new StreamReader(dataStream);
                             else
-                                readerStream = new StreamReader(dataStream, Encoding.GetEncoding(response.CharacterSet);
+                                readerStream = new StreamReader(dataStream, Encoding.GetEncoding(response.CharacterSet));
                             htmlCorreo = readerStream.ReadToEnd();
                             response.Close();
                             readerStream.Close();
@@ -154,26 +154,108 @@ namespace SistemaVenta.BLL.Implementation
             }
         }
 
-        public Task<Usuario> GetByCredentials(string mail, string password)
+        public async Task<Usuario> GetByCredentials(string mail, string password)
         {
-            throw new NotImplementedException();
+            string clave_encriptada = _utilidadesService.ConvertirSha256(password);
+            Usuario usuario_encontrado = await _repository.Obtener(u => u.Correo.Equals(mail) && u.Clave.Equals(password)); 
+            return usuario_encontrado;
         }
 
-        public Task<Usuario> GetById(int Id)
+        public async Task<Usuario> GetById(int Id)
         {
-            throw new NotImplementedException();
+            IQueryable<Usuario> query = await _repository.Consultar(u=>u.IdUsuario == Id);
+            Usuario usuario_encontrado = query.Include(r=>r.IdRolNavigation).FirstOrDefault();
+            return usuario_encontrado;
         }
-        public Task<bool> SaveProfile(Usuario entity)
+        public async Task<bool> SaveProfile(Usuario entity)
         {
-            throw new NotImplementedException();
+            try
+            {
+                Usuario usuario_encontrado = await _repository.Obtener(u=>u.IdUsuario == entity.IdUsuario);
+                if(usuario_encontrado == null)
+                    throw new TaskCanceledException("EL usuario no existe");
+
+                usuario_encontrado.Correo = entity.Correo;
+                usuario_encontrado.Telefono = entity.Telefono;
+
+                bool respuesta = await _repository.Editar(usuario_encontrado);
+                return respuesta;
+
+            }
+            catch {
+                throw;
+            }
         }        
-        public Task<bool> ChangePassword(int IdUsuario, string ClaveActual, string ClaveNueva)
+        public async Task<bool> ChangePassword(int IdUsuario, string ClaveActual, string ClaveNueva)
         {
-            throw new NotImplementedException();
+            try
+            {
+                Usuario usuario_encontrado = await _repository.Obtener(u => u.IdUsuario == IdUsuario);
+                if (usuario_encontrado == null)
+                    throw new TaskCanceledException("El usuario no existe");
+
+                if (usuario_encontrado.Clave != _utilidadesService.ConvertirSha256(ClaveActual))
+                    throw new TaskCanceledException("La clave ingresada como actual no es correcta");
+
+                usuario_encontrado.Clave = _utilidadesService.ConvertirSha256(ClaveNueva);
+                bool respuesta = await _repository.Editar(usuario_encontrado);
+
+                return respuesta;
+            }
+            catch
+            {
+                throw;
+            }
         }
-        public Task<bool> RestorePassword(string Correo, string UrlPlantillaCorreo)
+        public async Task<bool> RestorePassword(string Correo, string UrlPlantillaCorreo)
         {
-            throw new NotImplementedException();
+            try
+            {
+                Usuario usuario_encontrado = await _repository.Obtener(u => u.Correo == Correo);
+
+                if (usuario_encontrado == null)
+                    throw new TaskCanceledException("No existe un usuario asociado a el correo ingresado");
+
+                string clave_generada = _utilidadesService.GenerarClave();
+                usuario_encontrado.Clave = _utilidadesService.ConvertirSha256(clave_generada);
+
+                UrlPlantillaCorreo = UrlPlantillaCorreo.Replace("[clave]", clave_generada);
+
+                string htmlCorreo = "";
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlPlantillaCorreo);
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    using (Stream dataStream = response.GetResponseStream())
+                    {
+                        StreamReader readerStream = null;
+                        if (response.CharacterSet == null)
+                            readerStream = new StreamReader(dataStream);
+                        else
+                            readerStream = new StreamReader(dataStream, Encoding.GetEncoding(response.CharacterSet));
+                        htmlCorreo = readerStream.ReadToEnd();
+                        response.Close();
+                        readerStream.Close();
+
+                    }
+                }
+
+                bool correo_enviado = false;
+
+                if (htmlCorreo != "")
+                    correo_enviado = await _correoService.EnviarCorreo(Correo, "Clave restablecida", htmlCorreo);
+
+                if (!correo_enviado)
+                    throw new TaskCanceledException("Ocurrio un problema,intenta mas tarde");
+
+                bool respuesta = await _repository.Editar(usuario_encontrado);
+
+                return respuesta;
+            }
+            catch
+            {
+                throw;
+            }
         }
 
     }
