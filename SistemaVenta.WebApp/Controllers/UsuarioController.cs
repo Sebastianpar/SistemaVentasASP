@@ -117,7 +117,7 @@ namespace SistemaVenta.WebApp.Controllers
 
         [HttpDelete]
 
-        public async Task<IActionResult> ELiminar(int IdUsuario)
+        public async Task<IActionResult> ELiminar([FromQuery] int IdUsuario)
         {
             GenericResponse<string> genericResponse = new GenericResponse<string>();
             try

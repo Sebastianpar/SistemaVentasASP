@@ -108,6 +108,7 @@ namespace SistemaVenta.BLL.Implementation
                 usuario_editar.Correo = entity.Correo;
                 usuario_editar.Telefono = entity.Telefono;
                 usuario_editar.IdRol = entity.IdRol;
+                usuario_editar.EsActivo = entity.EsActivo;
 
                 if (usuario_editar.NombreFoto == "")
                     usuario_editar.NombreFoto = NombreFoto;

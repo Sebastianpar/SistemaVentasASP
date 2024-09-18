@@ -10,7 +10,22 @@
 
 let tablaData;
 $(document).ready(function () {
-    $('#tbdata').DataTable({
+
+    fetch("/Usuario/ListaRoles")
+        .then(response => {
+            return response.ok ? response.json() : Promise.reject(response);
+        })
+        .then(responseJson => {
+            if (responseJson.length > 0) {
+                responseJson.forEach((item) => {
+                    $("#cboRol").append(
+                        $("<option>").val(item.idRol).text(item.descripcion)
+                    )
+                })
+            }
+        })
+
+    tablaData = $('#tbdata').DataTable({
         responsive: true,
         "ajax": {
             "url": 'Usuario/Lista',
@@ -62,3 +77,151 @@ $(document).ready(function () {
         },
     });
 });
+
+
+
+
+function mostrarModal(modelo = MODELO_BASE) {
+    $("#txtId").val(modelo.idUsuario)
+    $("#txtNombre").val(modelo.nombre)
+    $("#txtCorreo").val(modelo.correo)
+    $("#txtTelefono").val(modelo.telefono)
+    $("#cboRol").val(modelo.idRol == 0? $("#cboRol option:first").val() : modelo.idRol)
+    $("#cboEstado").val(modelo.esActivo)
+    $("#txtFoto").val("")
+    $("#imgUsuario").attr("src", modelo.urlFoto)
+
+    $("#modalData").modal("show")
+}
+
+$("#btnNuevo").click(function () {
+    mostrarModal()
+})
+
+$("#btnGuardar").click(function () {
+    debugger;
+    const inputs = $("input.input-validar").serializeArray();
+    const inputs_vacios = inputs.filter((item) => item.value.trim() == "");
+
+    if (inputs_vacios.length > 0) {
+        const mensaje = `Debe completar el campo: "${inputs_vacios[0].name}"`;
+        toastr.warning("", mensaje);
+        $(`input[name="${inputs_vacios[0].name}"]`).focus();
+        return;
+    }
+
+    const modelo = structuredClone(MODELO_BASE);
+    modelo["idUsuario"] = parseInt($("#txtId").val())
+    modelo["nombre"] = $("#txtNombre").val()
+    modelo["correo"] = $("#txtCorreo").val()
+    modelo["Telefono"] = $("#txtTelefono").val()
+    modelo["idRol"] = $("#cboRol").val()
+    modelo["esActivo"] = $("#cboEstado").val()
+
+    const inputFoto = document.getElementById("txtFoto")
+
+    const formData = new FormData();
+
+    formData.append("foto", inputFoto.files[0])
+    formData.append("modelo", JSON.stringify(modelo))
+
+    $("#modalData").find("div.modal-content").LoadingOverlay("show");
+
+    if (modelo.idUsuario == 0) {
+        fetch("/Usuario/Crear", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => {
+                $("#modalData").find("div.modal-content").LoadingOverlay("hide");
+                return response.ok ? response.json() : Promise.reject(response);
+            })
+            .then(responseJson => {
+                if (responseJson.estado) {
+                    tablaData.row.add(responseJson.objeto).draw(false)
+                    $("#modalData").modal("hide")
+                    swal("Listo!", "El usuario fue creado", "success")
+                } else {
+                    swal("Lo sentimos", responseJSon.mensaje, "error")
+                }
+            })
+    } else {
+        fetch("/Usuario/Editar", {
+            method: "PUT",
+            body: formData
+        })
+            .then(response => {
+                $("#modalData").find("div.modal-content").LoadingOverlay("hide");
+                return response.ok ? response.json() : Promise.reject(response);
+            })
+            .then(responseJson => {
+                if (responseJson.estado) {
+                    tablaData.row(filaSeleccionada).data(responseJson.objeto).draw(false);
+                    filaSeleccionada = null;
+                    $("#modalData").modal("hide")
+                    swal("Listo!", "El usuario fue modificado", "success")
+                } else {
+                    swal("Lo sentimos", responseJSon.mensaje, "error")
+                }
+            })
+    }
+})
+
+let filaSeleccionada;
+$("#tbdata tbody").on("click", ".btn-editar", function () {
+    if ($(this).closest("tr").hasClass("child")) {
+        filaSeleccionada = $(this).closest("tr").prev();
+    } else {
+        filaSeleccionada = $(this).closest("tr");
+    }
+
+    const data = tablaData.row(filaSeleccionada).data();
+    mostrarModal(data);
+})
+
+$("#tbdata tbody").on("click", ".btn-eliminar", function () {
+    let fila;
+    if ($(this).closest("tr").hasClass("child")) {
+        filaSeleccionada = $(this).closest("tr").prev();
+    } else {
+        filaSeleccionada = $(this).closest("tr");
+    }
+
+    const data = tablaData.row(fila).data();
+
+    swal({
+        title: "Estas seguro?",
+        text: `Eliminar al usuario "${data.nombre}"`,
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonClass: "btn-danger",
+        confirmButtonText: "Si, eliminar",
+        cancelButtonText: "No, cancelar",
+        closeOnConfirm: false,
+        closeOnCancel: true
+    },
+        function (respuesta) {
+            if (respuesta) {
+                $(".showSweetAlert").LoadingOverlay("show");
+                fetch(`/Usuario/Eliminar?IdUsuario=${data.idUsuario}`, {
+                    method: "DELETE",
+                })
+                    .then(response => {
+                        $(".showSweetAlert").LoadingOverlay("hide");
+                        return response.ok ? response.json() : Promise.reject(response);
+                    })
+                    .then(responseJson => {
+                        if (responseJson.estado) {
+                            tablaData.row(fila).remove().draw()
+                            filaSeleccionada = null;
+                            $("#modalData").modal("hide")
+                            swal("Listo!", "El usuario fue eliminado", "success")
+                        } else {
+                            swal("Lo sentimos", responseJSon.mensaje, "error")
+                        }
+                    })
+
+            }
+        }
+    )
+})
